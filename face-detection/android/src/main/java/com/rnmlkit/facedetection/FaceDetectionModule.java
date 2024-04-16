@@ -7,8 +7,10 @@ import android.graphics.Rect;
 import android.net.Uri;
 import android.graphics.BitmapFactory;
 import android.graphics.Bitmap;
+import android.media.Image;
 
 import androidx.annotation.NonNull;
+import androidx.camera.core.ImageProxy;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -46,13 +48,20 @@ public class FaceDetectionModule extends ReactContextBaseJavaModule {
         return "FaceDetection";
     }
 
-    public static InputImage getInputImage(ReactApplicationContext reactContext, String url)
+    public static InputImage getInputImage(ReactApplicationContext reactContext, String url, ImageProxy frame)
             throws IOException {
 
         if (url.contains("http://") || url.contains("https://")) {
             URL urlInput = new URL(url);
             Bitmap image = BitmapFactory.decodeStream(urlInput.openConnection().getInputStream());
             InputImage inputImage = InputImage.fromBitmap(image, 0);
+            return inputImage;
+        }
+        else if(url.equals("")) {
+            Image mediaImage = frame.getImage();
+            // if (mediaImage != null) {
+            InputImage inputImage = InputImage.fromMediaImage(mediaImage, frame.getImageInfo().getRotationDegrees());
+            // }
             return inputImage;
         }
         else {
@@ -291,10 +300,14 @@ public class FaceDetectionModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void detect(String url, final ReadableMap optionsMap, final Promise promise) {
+    public void detect(String url, ImageProxy frame, final ReadableMap optionsMap, final Promise promise) {
         InputImage image;
         try {
-            image = getInputImage(this.reactContext, url);
+            if ( url.equals("") ){
+                image = getInputImage(this.reactContext, url, frame);
+            }else{
+                image = getInputImage(this.reactContext, url, null);
+            }
             FaceDetectorOptions options = getOptions(optionsMap);
             FaceDetector detector = FaceDetection.getClient(options);
             detector.process(image)
